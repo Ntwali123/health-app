@@ -1,37 +1,53 @@
-import React from 'react';
-import { StyleSheet, View, ViewStyle } from 'react-native';
-import { Text, useTheme } from 'react-native-paper';
-import { colors, shadows } from '../theme/theme';
+import React, { useState } from "react";
+import {
+  StyleSheet,
+  TouchableOpacity,
+  View,
+  ViewStyle,
+  Animated,
+} from "react-native";
+import { Text, useTheme } from "react-native-paper";
+import * as Animatable from "react-native-animatable";
+import { colors, shadows } from "../theme/theme";
 
 interface CardProps {
   title?: string;
   subtitle?: string;
   children: React.ReactNode;
-  variant?: 'elevated' | 'outlined' | 'flat';
+  variant?: "elevated" | "outlined" | "flat" | "gradient";
   style?: ViewStyle;
   onPress?: () => void;
+  animation?: "fadeIn" | "slideInUp" | "zoomIn" | "pulse" | "none";
+  animationDelay?: number;
+  animationDuration?: number;
 }
 
 export const Card: React.FC<CardProps> = ({
   title,
   subtitle,
   children,
-  variant = 'elevated',
+  variant = "elevated",
   style,
   onPress,
+  animation = "none",
+  animationDelay = 0,
+  animationDuration = 500,
 }) => {
   const theme = useTheme();
+  const [pressedIn, setPressedIn] = useState(false);
 
   const getCardStyle = () => {
     const baseStyle: ViewStyle = {
-      borderRadius: 12,
+      borderRadius: 20,
       padding: 16,
       backgroundColor: colors.background.paper,
+      overflow: "hidden",
     };
 
     const variantStyles: Record<string, ViewStyle> = {
       elevated: {
-        ...shadows.medium,
+        ...shadows.card,
+        borderWidth: 0,
       },
       outlined: {
         borderWidth: 1,
@@ -40,22 +56,36 @@ export const Card: React.FC<CardProps> = ({
       flat: {
         backgroundColor: colors.background.default,
       },
+      gradient: {
+        backgroundColor: colors.background.paper,
+      },
     };
+
+    // Add pressed-in state styling
+    const pressedStyle: ViewStyle =
+      onPress && pressedIn
+        ? {
+            transform: [{ scale: 0.98 }],
+            backgroundColor:
+              variant === "flat" ? colors.grey[200] : colors.background.paper,
+          }
+        : {};
 
     return StyleSheet.create({
       container: {
         ...baseStyle,
         ...variantStyles[variant],
+        ...pressedStyle,
         ...style,
       },
       header: {
-        marginBottom: 12,
+        marginBottom: 14,
       },
       title: {
-        fontSize: 18,
-        fontWeight: '600',
+        fontSize: 16,
+        fontWeight: "700",
         color: colors.text.primary,
-        marginBottom: 4,
+        marginBottom: 2,
       },
       subtitle: {
         fontSize: 14,
@@ -66,8 +96,31 @@ export const Card: React.FC<CardProps> = ({
 
   const styles = getCardStyle();
 
-  return (
-    <View style={styles.container}>
+  const handlePressIn = () => {
+    if (onPress) {
+      setPressedIn(true);
+    }
+  };
+
+  const handlePressOut = () => {
+    if (onPress) {
+      setPressedIn(false);
+    }
+  };
+
+  const CardContainer = animation !== "none" ? Animatable.View : View;
+  const animationProps =
+    animation !== "none"
+      ? {
+          animation,
+          delay: animationDelay,
+          duration: animationDuration,
+          useNativeDriver: true,
+        }
+      : {};
+
+  const renderCardContent = () => (
+    <CardContainer style={styles.container} {...animationProps}>
       {(title || subtitle) && (
         <View style={styles.header}>
           {title && <Text style={styles.title}>{title}</Text>}
@@ -75,6 +128,21 @@ export const Card: React.FC<CardProps> = ({
         </View>
       )}
       {children}
-    </View>
+    </CardContainer>
   );
-}; 
+
+  if (onPress) {
+    return (
+      <TouchableOpacity
+        activeOpacity={0.95}
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+      >
+        {renderCardContent()}
+      </TouchableOpacity>
+    );
+  }
+
+  return renderCardContent();
+};

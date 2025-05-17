@@ -1,16 +1,17 @@
-import React from 'react';
-import { StyleSheet, View, ViewStyle } from 'react-native';
-import { Text, useTheme } from 'react-native-paper';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { colors } from '../theme/theme';
+import React, { useEffect, useRef } from "react";
+import { StyleSheet, View, ViewStyle, Animated } from "react-native";
+import { Text, useTheme } from "react-native-paper";
+import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import * as Animatable from "react-native-animatable";
+import { colors, shadows } from "../theme/theme";
 
 interface HealthMetricProps {
   title: string;
   value: string | number;
   unit?: string;
   icon?: string;
-  trend?: 'up' | 'down' | 'stable';
-  status?: 'normal' | 'warning' | 'critical';
+  trend?: "up" | "down" | "stable";
+  status?: "normal" | "warning" | "critical";
   style?: ViewStyle;
 }
 
@@ -20,18 +21,42 @@ export const HealthMetric: React.FC<HealthMetricProps> = ({
   unit,
   icon,
   trend,
-  status = 'normal',
+  status = "normal",
   style,
 }) => {
   const theme = useTheme();
+  const scaleAnim = useRef(new Animated.Value(0)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+  const iconPulseAnim = useRef();
+
+  useEffect(() => {
+    // Animate in when component mounts
+    Animated.parallel([
+      Animated.timing(scaleAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacityAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Start pulse animation for icon if ref is available
+    if (iconPulseAnim.current) {
+      iconPulseAnim.current.pulse(1500);
+    }
+  }, []);
 
   const getStatusColor = () => {
     switch (status) {
-      case 'normal':
+      case "normal":
         return colors.success.main;
-      case 'warning':
+      case "warning":
         return colors.warning.main;
-      case 'critical':
+      case "critical":
         return colors.error.main;
       default:
         return colors.text.primary;
@@ -40,12 +65,12 @@ export const HealthMetric: React.FC<HealthMetricProps> = ({
 
   const getTrendIcon = () => {
     switch (trend) {
-      case 'up':
-        return 'trending-up';
-      case 'down':
-        return 'trending-down';
-      case 'stable':
-        return 'trending-neutral';
+      case "up":
+        return "trending-up";
+      case "down":
+        return "trending-down";
+      case "stable":
+        return "trending-neutral";
       default:
         return null;
     }
@@ -53,11 +78,11 @@ export const HealthMetric: React.FC<HealthMetricProps> = ({
 
   const getTrendColor = () => {
     switch (trend) {
-      case 'up':
+      case "up":
         return colors.success.main;
-      case 'down':
+      case "down":
         return colors.error.main;
-      case 'stable':
+      case "stable":
         return colors.info.main;
       default:
         return colors.text.secondary;
@@ -66,20 +91,23 @@ export const HealthMetric: React.FC<HealthMetricProps> = ({
 
   const styles = StyleSheet.create({
     container: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      padding: 12,
       backgroundColor: colors.background.paper,
-      borderRadius: 8,
+      borderRadius: 20,
+      padding: 16,
+      ...shadows.small,
       ...style,
     },
+    innerContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
     iconContainer: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      backgroundColor: colors.primary.light,
-      alignItems: 'center',
-      justifyContent: 'center',
+      width: 50,
+      height: 50,
+      borderRadius: 16,
+      backgroundColor: colors.primary.main + "15",
+      alignItems: "center",
+      justifyContent: "center",
       marginRight: 12,
     },
     content: {
@@ -87,16 +115,17 @@ export const HealthMetric: React.FC<HealthMetricProps> = ({
     },
     title: {
       fontSize: 14,
+      fontWeight: "500",
       color: colors.text.secondary,
       marginBottom: 4,
     },
     valueContainer: {
-      flexDirection: 'row',
-      alignItems: 'baseline',
+      flexDirection: "row",
+      alignItems: "baseline",
     },
     value: {
-      fontSize: 24,
-      fontWeight: '600',
+      fontSize: 22,
+      fontWeight: "700",
       color: getStatusColor(),
       marginRight: 4,
     },
@@ -105,39 +134,64 @@ export const HealthMetric: React.FC<HealthMetricProps> = ({
       color: colors.text.secondary,
     },
     trendContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
+      flexDirection: "row",
+      alignItems: "center",
       marginLeft: 8,
+      backgroundColor: `${getTrendColor()}15`,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 12,
     },
     trendIcon: {
-      marginRight: 4,
+      marginRight: 2,
     },
   });
 
   return (
-    <View style={styles.container}>
-      {icon && (
-        <View style={styles.iconContainer}>
-          <Icon name={icon} size={24} color={colors.primary.main} />
-        </View>
-      )}
-      <View style={styles.content}>
-        <Text style={styles.title}>{title}</Text>
-        <View style={styles.valueContainer}>
-          <Text style={styles.value}>{value}</Text>
-          {unit && <Text style={styles.unit}>{unit}</Text>}
-          {trend && (
-            <View style={styles.trendContainer}>
-              <Icon
-                name={getTrendIcon()}
-                size={16}
-                color={getTrendColor()}
-                style={styles.trendIcon}
-              />
-            </View>
-          )}
+    <Animated.View
+      style={[
+        styles.container,
+        {
+          transform: [{ scale: scaleAnim }],
+          opacity: opacityAnim,
+        },
+      ]}
+    >
+      <View style={styles.innerContainer}>
+        {icon && (
+          <Animatable.View ref={iconPulseAnim} style={styles.iconContainer}>
+            <Icon name={icon} size={24} color={colors.primary.main} />
+          </Animatable.View>
+        )}
+        <View style={styles.content}>
+          <Text style={styles.title}>{title}</Text>
+          <View style={styles.valueContainer}>
+            <Text style={styles.value}>{value}</Text>
+            {unit && <Text style={styles.unit}>{unit}</Text>}
+            {trend && (
+              <Animatable.View
+                style={styles.trendContainer}
+                animation={
+                  trend === "up"
+                    ? "bounceIn"
+                    : trend === "down"
+                      ? "fadeIn"
+                      : "pulse"
+                }
+                iterationCount={trend === "stable" ? "infinite" : 1}
+                duration={1500}
+              >
+                <Icon
+                  name={getTrendIcon()}
+                  size={14}
+                  color={getTrendColor()}
+                  style={styles.trendIcon}
+                />
+              </Animatable.View>
+            )}
+          </View>
         </View>
       </View>
-    </View>
+    </Animated.View>
   );
-}; 
+};

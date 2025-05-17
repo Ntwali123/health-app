@@ -1,9 +1,14 @@
 import React from "react";
+import { StyleSheet, Image, View } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
-import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import {
+  createNativeStackNavigator,
+  NativeStackNavigationOptions,
+} from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { useTheme } from "react-native-paper";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import * as Animatable from "react-native-animatable";
 
 import { RootStackParamList, MainTabParamList } from "./types";
 import { colors } from "../theme/theme";
@@ -29,6 +34,27 @@ import { USSDSupportScreen } from "../screens/USSDSupportScreen";
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
+// Custom tab bar animation
+interface TabBarIconProps {
+  focused: boolean;
+  color: string;
+  size: number;
+  name: string;
+}
+
+const TabBarIcon = ({ focused, color, size, name }: TabBarIconProps) => {
+  return (
+    <Animatable.View
+      animation={focused ? "pulse" : undefined}
+      iterationCount={focused ? "infinite" : 1}
+      duration={1500}
+      style={styles.tabIconContainer}
+    >
+      <Icon name={name} size={size} color={color} />
+    </Animatable.View>
+  );
+};
+
 const MainTabs = () => {
   const theme = useTheme();
 
@@ -44,6 +70,8 @@ const MainTabs = () => {
           shadowOpacity: 0.1,
           height: 60,
           paddingBottom: 8,
+          borderTopLeftRadius: 20,
+          borderTopRightRadius: 20,
         },
         headerStyle: {
           backgroundColor: colors.background.paper,
@@ -55,14 +83,24 @@ const MainTabs = () => {
           fontSize: 20,
           fontWeight: "600",
         },
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: "500",
+        },
+        tabBarHideOnKeyboard: true,
       }}
     >
       <Tab.Screen
         name="Health"
         component={HealthScreen}
         options={{
-          tabBarIcon: ({ color, size }) => (
-            <Icon name="heart-pulse" size={size} color={color} />
+          tabBarIcon: ({ focused, color, size }) => (
+            <TabBarIcon
+              focused={focused}
+              color={color}
+              size={size}
+              name="heart-pulse"
+            />
           ),
         }}
       />
@@ -70,8 +108,13 @@ const MainTabs = () => {
         name="Appointments"
         component={AppointmentsScreen}
         options={{
-          tabBarIcon: ({ color, size }) => (
-            <Icon name="calendar" size={size} color={color} />
+          tabBarIcon: ({ focused, color, size }) => (
+            <TabBarIcon
+              focused={focused}
+              color={color}
+              size={size}
+              name="calendar"
+            />
           ),
         }}
       />
@@ -79,8 +122,13 @@ const MainTabs = () => {
         name="AI"
         component={AIScreen}
         options={{
-          tabBarIcon: ({ color, size }) => (
-            <Icon name="brain" size={size} color={color} />
+          tabBarIcon: ({ focused, color, size }) => (
+            <TabBarIcon
+              focused={focused}
+              color={color}
+              size={size}
+              name="brain"
+            />
           ),
         }}
       />
@@ -88,8 +136,13 @@ const MainTabs = () => {
         name="Profile"
         component={ProfileScreen}
         options={{
-          tabBarIcon: ({ color, size }) => (
-            <Icon name="account" size={size} color={color} />
+          tabBarIcon: ({ focused, color, size }) => (
+            <TabBarIcon
+              focused={focused}
+              color={color}
+              size={size}
+              name="account"
+            />
           ),
         }}
       />
@@ -97,16 +150,36 @@ const MainTabs = () => {
   );
 };
 
-export const Navigation = () => {
+interface NavigationProps {
+  initialRoute?: keyof RootStackParamList;
+}
+
+export const Navigation: React.FC<NavigationProps> = ({
+  initialRoute = "Login",
+}) => {
   const { isAuthenticated, hasCompletedOnboarding } = useAuth();
+
+  // Screen transition animations
+  const screenOptions: NativeStackNavigationOptions = {
+    headerShown: false,
+    contentStyle: { backgroundColor: colors.background.default },
+    animation: "slide_from_right",
+    animationDuration: 200,
+    gestureEnabled: true,
+    gestureDirection: "horizontal" as any, // Type assertion to bypass type check
+  };
+
+  // Determine the initial route
+  let actualInitialRoute = initialRoute;
+  if (isAuthenticated) {
+    actualInitialRoute = hasCompletedOnboarding ? "Main" : "Onboarding";
+  }
 
   return (
     <NavigationContainer>
       <Stack.Navigator
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: colors.background.default },
-        }}
+        initialRouteName={actualInitialRoute}
+        screenOptions={screenOptions}
       >
         {!isAuthenticated ? (
           // Auth Stack
@@ -121,10 +194,19 @@ export const Navigation = () => {
           // Main App Stack
           <>
             <Stack.Screen name="Home" component={HomeScreen} />
-            <Stack.Screen name="Main" component={MainTabs} />
+            <Stack.Screen
+              name="Main"
+              component={MainTabs}
+              options={{
+                animation: "fade",
+              }}
+            />
             <Stack.Screen
               name="Teleconsultation"
               component={TeleconsultationScreen}
+              options={{
+                animation: "slide_from_bottom",
+              }}
             />
             <Stack.Screen
               name="AppointmentDetails"
@@ -139,6 +221,9 @@ export const Navigation = () => {
             <Stack.Screen
               name="Notifications"
               component={NotificationsScreen}
+              options={{
+                animation: "slide_from_bottom",
+              }}
             />
             <Stack.Screen name="USSDSupport" component={USSDSupportScreen} />
           </>
@@ -147,3 +232,20 @@ export const Navigation = () => {
     </NavigationContainer>
   );
 };
+
+const styles = StyleSheet.create({
+  tabIconContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerTitleContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerLogo: {
+    width: 32,
+    height: 32,
+    marginRight: 8,
+  },
+});
